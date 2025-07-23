@@ -14,7 +14,7 @@ from threat_hunter.utils.logger import logger
 DEFAULT_SETTINGS: Dict[str, int] = {
     "processing_interval": 300,
     "initial_scan_count": 200,
-    "log_batch_size": 100000,
+    "log_batch_size": 1000,
     "search_k": 500,
     "analysis_k": 500,
     "max_issues": 1000,
@@ -99,10 +99,14 @@ class ThreatHunterCore:
 
     async def process_logs(self) -> List[Dict[str, Any]]:
         self.status = "processing"
-        logs = await self.wazuh.read_new_logs(batch_size=self.settings.get("log_batch_size", DEFAULT_SETTINGS["log_batch_size"]))
+        logs = await self.wazuh.read_new_logs(
+            batch_size=self.settings.get(
+                "log_batch_size", DEFAULT_SETTINGS["log_batch_size"]
+            )
+        )
         if logs:
-            self.vector_db.add_documents(logs)
-            self.vector_db.save()
+            await self.vector_db.add_documents(logs)
+            await self.vector_db.save()
             self._save_state()
         self.status = "ready"
         self.last_run = datetime.utcnow().isoformat()
@@ -119,11 +123,15 @@ class ThreatHunterCore:
             "Respond in JSON with fields: severity, title, summary, recommendation."
         )
         text = await self.gemini.generate(
-            prompt, max_tokens=self.settings.get("max_output_tokens", DEFAULT_SETTINGS["max_output_tokens"])
+            prompt,
+            max_tokens=self.settings.get(
+                "max_output_tokens", DEFAULT_SETTINGS["max_output_tokens"]
+            ),
         )
         try:
+            next_id = len(self.issues) + len(self.ignored) + 1
             issue = {
-                "id": f"TH-{len(self.issues)+1:03d}",
+                "id": f"TH-{next_id:03d}",
                 "title": text.split("\n")[0][:64],
                 "summary": text,
                 "recommendation": "Review the logs",
@@ -131,10 +139,15 @@ class ThreatHunterCore:
                 "timestamp": datetime.utcnow().isoformat(),
                 "related_logs": []
             }
-            if issue["id"] not in self.ignored:
-                self.issues.append(issue)
-                self.issues = self.issues[-self.settings.get("max_issues", DEFAULT_SETTINGS["max_issues"]):]
-                self._save_state()
+            if issue["id"] in self.ignored:
+                return
+            if any(i.get("id") == issue["id"] for i in self.issues):
+                return
+            self.issues.append(issue)
+            self.issues = self.issues[-self.settings.get(
+                "max_issues", DEFAULT_SETTINGS["max_issues"]
+            ) :]
+            self._save_state()
         except Exception as e:
             logger.error("Failed to parse Gemini response: %s", e)
         self.status = "ready"
@@ -151,7 +164,7 @@ class ThreatHunterCore:
             },
             "log_trend": [],
             "rule_distribution": {},
-            "active_api_key_index": self.gemini.current,
+            "active_api_key_index": self.gemini.active_key_index,
             "settings": self.settings,
         }
 
@@ -164,6 +177,20 @@ class ThreatHunterCore:
         self.issues = [i for i in self.issues if i.get("id") != issue_id]
         self.ignored.add(issue_id)
         self._save_state()
+
+    async def periodic_worker(self, interval: int) -> None:
+        """Continuously process logs and analyze them at a fixed interval."""
+        import time
+
+        while True:
+            start = time.monotonic()
+            logs = await self.process_logs()
+            await self.analyze(logs)
+            cycle = time.monotonic() - start
+            await self.metrics.set_cycle_time(cycle)
+            await asyncio.sleep(
+                self.settings.get("processing_interval", interval)
+            )
 
     # ------------------------------------------------------------------
     def update_settings(self, new_settings: Mapping[str, int]) -> None:
@@ -190,4 +217,3 @@ class ThreatHunterCore:
         self.issues = []
         self.last_run = None
         self._save_state()
-

@@ -8,11 +8,19 @@ from threat_hunter.utils.logger import logger
 
 
 class WazuhAPI:
-    def __init__(self, base_url: str, username: str, password: str, log_file: str = "/var/ossec/logs/alerts/alerts.json"):
+    def __init__(
+        self,
+        base_url: str,
+        username: str,
+        password: str,
+        log_file: str = "/var/ossec/logs/alerts/alerts.json",
+        batch_size: int = 1000,
+    ):
         self.base_url = base_url.rstrip("/")
         self.auth = (username, password)
         self.client = httpx.AsyncClient(auth=self.auth, verify=False)
         self.log_file = log_file
+        self.batch_size = batch_size
         self.position_file = self.log_file + ".pos"
 
     async def get_alerts(self, timeframe: str = "1h") -> List[Dict[str, Any]]:
@@ -38,11 +46,19 @@ class WazuhAPI:
         with open(self.position_file, "w") as f:
             f.write(str(pos))
 
-    async def read_new_logs(self, batch_size: int = 1000) -> List[Dict[str, Any]]:
+    async def read_new_logs(self, batch_size: int | None = None) -> List[Dict[str, Any]]:
         if not os.path.exists(self.log_file):
             return []
+        if batch_size is None:
+            batch_size = self.batch_size
+
         logs: List[Dict[str, Any]] = []
         pos = self._read_position()
+        file_size = os.path.getsize(self.log_file)
+        if pos > file_size:
+            pos = 0
+            self._write_position(0)
+
         with open(self.log_file, "r", errors="ignore") as f:
             f.seek(pos)
             for _ in range(batch_size):

@@ -58,4 +58,17 @@ async def metrics_endpoint():
 
 
 if __name__ == "__main__":
+    # Verify required environment variables before starting
+    api_keys = os.environ.get("GEMINI_API_KEYS") or os.environ.get("GEMINI_API_KEY")
+    basic_user = os.environ.get("BASIC_AUTH_USER")
+    basic_pass = os.environ.get("BASIC_AUTH_PASS")
+
+    if not api_keys or not any(k.strip() for k in api_keys.split(",")):
+        logger.error("No GEMINI_API_KEY provided. Set GEMINI_API_KEYS or GEMINI_API_KEY.")
+        raise SystemExit(1)
+
+    if not basic_user or not basic_pass:
+        logger.error("BASIC_AUTH_USER and BASIC_AUTH_PASS must be set.")
+        raise SystemExit(1)
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

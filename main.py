@@ -39,6 +39,9 @@ async def startup_event():
     logger.info("Starting Threat Hunter application...")
     global core
     core = get_threat_hunter_core()
+    # Load persisted vector database before starting background tasks
+    if os.path.exists(core.vector_db.index_path):
+        await core.vector_db.load()
 
     interval = int(os.environ.get("PROCESS_INTERVAL", 300))
 

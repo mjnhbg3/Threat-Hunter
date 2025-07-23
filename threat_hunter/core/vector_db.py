@@ -24,8 +24,7 @@ class VectorDB:
         self.index = faiss.IndexFlatL2(self.model.get_sentence_embedding_dimension())
         self.index = faiss.IndexIDMap(self.index)
         self.metadata: Dict[int, Dict[str, Any]] = {}
-        if os.path.exists(self.index_path):
-            asyncio.run(self.load())
+        # Defer loading to caller to avoid blocking during initialization
 
     async def save(self) -> None:
         async with self.lock:

@@ -123,6 +123,7 @@ class ThreatHunterCore:
         self.status = "ready"
 
     def get_dashboard_data(self) -> Dict[str, Any]:
+        """Return status information and recent activity for the UI."""
         now = datetime.utcnow()
         cutoff = now - timedelta(hours=1)
         trend_counts: dict[str, int] = defaultdict(int)

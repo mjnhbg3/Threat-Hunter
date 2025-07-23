@@ -43,8 +43,7 @@ async def startup_event():
 
     async def periodic():
         while True:
-            logs = await core.process_logs()
-            await core.analyze(logs)
+            await core.process_logs()
             await asyncio.sleep(interval)
 
     asyncio.create_task(periodic())

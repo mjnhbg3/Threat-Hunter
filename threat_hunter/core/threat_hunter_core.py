@@ -70,8 +70,8 @@ class ThreatHunterCore:
         logs = await self.wazuh.read_new_logs()
         self.new_logs = len(logs)
         if logs:
-            self.vector_db.add_documents(logs)
-            self.vector_db.save()
+            await self.vector_db.add_documents(logs)
+            await self.vector_db.save()
             now = datetime.utcnow()
             for entry in logs:
                 ts_str = entry.get("timestamp") or entry.get("@timestamp")

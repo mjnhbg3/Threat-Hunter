@@ -124,3 +124,15 @@ class ThreatHunterCore:
         self.issues = [i for i in self.issues if i.get("id") != issue_id]
         self.ignored.add(issue_id)
         self._save_state()
+
+    async def periodic_worker(self, interval: int) -> None:
+        """Continuously process logs and analyze them at a fixed interval."""
+        import time
+
+        while True:
+            start = time.monotonic()
+            logs = await self.process_logs()
+            await self.analyze(logs)
+            cycle = time.monotonic() - start
+            await self.metrics.set_cycle_time(cycle)
+            await asyncio.sleep(interval)

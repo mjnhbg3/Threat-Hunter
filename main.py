@@ -41,13 +41,7 @@ async def startup_event():
 
     interval = int(os.environ.get("PROCESS_INTERVAL", 300))
 
-    async def periodic():
-        while True:
-            logs = await core.process_logs()
-            await core.analyze(logs)
-            await asyncio.sleep(interval)
-
-    asyncio.create_task(periodic())
+    asyncio.create_task(core.periodic_worker(interval))
 
 
 @app.get("/metrics")

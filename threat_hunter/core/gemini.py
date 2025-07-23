@@ -126,6 +126,8 @@ class Gemini:
             self.failures[key] = 0
             return resp.text
         except Exception as e:
+            if "429" in str(e):
+                await self.metrics.increment_429s(model)
             logger.error("Gemini API error: %s", e)
             if "429" in str(e):
                 self.failures[key] += 1

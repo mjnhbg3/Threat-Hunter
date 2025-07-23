@@ -26,7 +26,6 @@ async def trigger_analysis(
     core: ThreatHunterCore = Depends(get_threat_hunter_core),
 ):
     async def run():
-        logs = await core.process_logs()
-        await core.analyze(logs)
+        await core.process_logs()
     asyncio.create_task(run())
     return {"message": "Analysis started"}

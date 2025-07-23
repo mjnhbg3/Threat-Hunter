@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Mapping
 
 import json
 import os
@@ -11,6 +11,17 @@ from threat_hunter.core.wazuh import WazuhAPI
 from threat_hunter.utils.logger import logger
 
 
+DEFAULT_SETTINGS: Dict[str, int] = {
+    "processing_interval": 300,
+    "initial_scan_count": 200,
+    "log_batch_size": 100000,
+    "search_k": 500,
+    "analysis_k": 500,
+    "max_issues": 1000,
+    "max_output_tokens": 8000,
+}
+
+
 class ThreatHunterCore:
     """Main orchestrator for log processing and threat analysis."""
 
@@ -18,6 +29,7 @@ class ThreatHunterCore:
         self.db_dir = db_dir
         self.dashboard_path = os.path.join(db_dir, "dashboard.json")
         self.ignore_path = os.path.join(db_dir, "ignored.json")
+        self.settings_path = os.path.join(db_dir, "settings.json")
 
         self.vector_db = VectorDB(db_dir)
         self.metrics = MetricsCollector()
@@ -27,8 +39,10 @@ class ThreatHunterCore:
         self.last_run: str | None = None
         self.issues: List[Dict[str, Any]] = []
         self.ignored: set[str] = set()
+        self.settings: Dict[str, int] = DEFAULT_SETTINGS.copy()
 
         self._load_state()
+        self._load_settings()
 
     # ------------------------------------------------------------------
     def _load_state(self) -> None:
@@ -61,9 +75,31 @@ class ThreatHunterCore:
         except Exception as exc:  # pragma: no cover - best effort
             logger.error("Failed to save dashboard state: %s", exc)
 
+    # ------------------------------------------------------------------
+    def _load_settings(self) -> None:
+        """Load persistent settings from disk."""
+        if os.path.exists(self.settings_path):
+            try:
+                with open(self.settings_path, "r") as f:
+                    loaded = json.load(f)
+                for k, v in loaded.items():
+                    if k in DEFAULT_SETTINGS:
+                        self.settings[k] = v
+            except Exception as exc:  # pragma: no cover - best effort
+                logger.error("Failed to load settings: %s", exc)
+
+    def _save_settings(self) -> None:
+        """Persist settings to disk."""
+        try:
+            os.makedirs(self.db_dir, exist_ok=True)
+            with open(self.settings_path, "w") as f:
+                json.dump(self.settings, f)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.error("Failed to save settings: %s", exc)
+
     async def process_logs(self) -> List[Dict[str, Any]]:
         self.status = "processing"
-        logs = await self.wazuh.read_new_logs()
+        logs = await self.wazuh.read_new_logs(batch_size=self.settings.get("log_batch_size", DEFAULT_SETTINGS["log_batch_size"]))
         if logs:
             self.vector_db.add_documents(logs)
             self.vector_db.save()
@@ -82,7 +118,9 @@ class ThreatHunterCore:
             f"Logs:\n{logs_str}\n"
             "Respond in JSON with fields: severity, title, summary, recommendation."
         )
-        text = await self.gemini.generate(prompt, max_tokens=512)
+        text = await self.gemini.generate(
+            prompt, max_tokens=self.settings.get("max_output_tokens", DEFAULT_SETTINGS["max_output_tokens"])
+        )
         try:
             issue = {
                 "id": f"TH-{len(self.issues)+1:03d}",
@@ -95,6 +133,7 @@ class ThreatHunterCore:
             }
             if issue["id"] not in self.ignored:
                 self.issues.append(issue)
+                self.issues = self.issues[-self.settings.get("max_issues", DEFAULT_SETTINGS["max_issues"]):]
                 self._save_state()
         except Exception as e:
             logger.error("Failed to parse Gemini response: %s", e)
@@ -113,6 +152,7 @@ class ThreatHunterCore:
             "log_trend": [],
             "rule_distribution": {},
             "active_api_key_index": self.gemini.current,
+            "settings": self.settings,
         }
 
     async def get_metrics_text(self) -> str:
@@ -124,3 +164,30 @@ class ThreatHunterCore:
         self.issues = [i for i in self.issues if i.get("id") != issue_id]
         self.ignored.add(issue_id)
         self._save_state()
+
+    # ------------------------------------------------------------------
+    def update_settings(self, new_settings: Mapping[str, int]) -> None:
+        """Update settings and persist them."""
+        for key, value in new_settings.items():
+            if key in DEFAULT_SETTINGS and isinstance(value, int):
+                self.settings[key] = value
+        self._save_settings()
+
+    async def clear_database(self) -> None:
+        """Remove all stored data and reset state."""
+        try:
+            if os.path.exists(self.vector_db.index_path):
+                os.remove(self.vector_db.index_path)
+            if os.path.exists(self.vector_db.meta_path):
+                os.remove(self.vector_db.meta_path)
+            if os.path.exists(self.dashboard_path):
+                os.remove(self.dashboard_path)
+            if os.path.exists(self.wazuh.position_file):
+                os.remove(self.wazuh.position_file)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.error("Failed to clear database files: %s", exc)
+        self.vector_db = VectorDB(self.db_dir)
+        self.issues = []
+        self.last_run = None
+        self._save_state()
+

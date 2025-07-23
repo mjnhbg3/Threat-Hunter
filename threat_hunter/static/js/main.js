@@ -1214,4 +1214,53 @@ document.addEventListener('DOMContentLoaded', () => {
     // Click handlers for opening modals
     document.getElementById('security-issues-header').addEventListener('click', () => openFullIssuesModal(allIssues));
     document.getElementById('rule-chart-card').addEventListener('click', () => openRuleAnalysisModal());
+
+    // Settings form
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            if (!res.ok) return;
+            const data = await res.json();
+            for (const [k, v] of Object.entries(data)) {
+                const el = document.querySelector(`#settings-form [name="${k}"]`);
+                if (el) el.value = v;
+            }
+        } catch (e) { console.error('Failed to load settings', e); }
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = Object.fromEntries(new FormData(form).entries());
+        for (const k in data) data[k] = parseInt(data[k], 10);
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!res.ok) throw new Error('Save failed');
+            showToast('Settings saved');
+            settingsModal.style.display = 'none';
+            fetchData();
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to save settings', 'error');
+        }
+    });
+
+    document.getElementById('clear-db-btn').addEventListener('click', async () => {
+        if (!confirm('Clear all stored data?')) return;
+        try {
+            const res = await fetch('/api/clear_db', { method: 'POST' });
+            if (!res.ok) throw new Error('Clear failed');
+            showToast('Database cleared');
+            fetchData();
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to clear database', 'error');
+        }
+    });
+
+    loadSettings();
 });

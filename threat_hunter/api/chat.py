@@ -25,5 +25,8 @@ async def execute_chat(
     query: ChatQuery,
     core: ThreatHunterCore = Depends(get_threat_hunter_core),
 ):
-    answer = await core.gemini.generate(query.query, max_tokens=256)
+    answer = await core.gemini.generate(
+        query.query,
+        max_tokens=core.settings.get("max_output_tokens", 256),
+    )
     return {"answer": answer}

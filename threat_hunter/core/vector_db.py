@@ -25,7 +25,14 @@ class VectorDB:
         self.index = faiss.IndexIDMap(self.index)
         self.metadata: Dict[int, Dict[str, Any]] = {}
         if os.path.exists(self.index_path):
-            asyncio.run(self.load())
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                loop.create_task(self.load())
+            else:
+                asyncio.run(self.load())
 
     async def save(self) -> None:
         async with self.lock:

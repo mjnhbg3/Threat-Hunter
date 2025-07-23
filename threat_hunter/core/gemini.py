@@ -74,6 +74,8 @@ class Gemini:
             )
             return resp.text
         except Exception as e:
+            if "429" in str(e):
+                await self.metrics.increment_429s(model)
             logger.error("Gemini API error: %s", e)
             self.rotate()
             return ""

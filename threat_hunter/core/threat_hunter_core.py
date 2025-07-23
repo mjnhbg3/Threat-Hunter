@@ -84,8 +84,9 @@ class ThreatHunterCore:
         )
         text = await self.gemini.generate(prompt, max_tokens=512)
         try:
+            next_id = len(self.issues) + len(self.ignored) + 1
             issue = {
-                "id": f"TH-{len(self.issues)+1:03d}",
+                "id": f"TH-{next_id:03d}",
                 "title": text.split("\n")[0][:64],
                 "summary": text,
                 "recommendation": "Review the logs",
@@ -93,9 +94,12 @@ class ThreatHunterCore:
                 "timestamp": datetime.utcnow().isoformat(),
                 "related_logs": []
             }
-            if issue["id"] not in self.ignored:
-                self.issues.append(issue)
-                self._save_state()
+            if issue["id"] in self.ignored:
+                return
+            if any(i.get("id") == issue["id"] for i in self.issues):
+                return
+            self.issues.append(issue)
+            self._save_state()
         except Exception as e:
             logger.error("Failed to parse Gemini response: %s", e)
         self.status = "ready"

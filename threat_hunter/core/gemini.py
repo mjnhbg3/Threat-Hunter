@@ -2,6 +2,8 @@ import asyncio
 import time
 from typing import List
 
+from threat_hunter.core.metrics import MetricsCollector
+
 import google.generativeai as genai
 
 from threat_hunter.utils.logger import logger
@@ -31,26 +33,45 @@ class TokenBucket:
 
 
 class Gemini:
-    def __init__(self, api_keys: List[str]):
+    def __init__(self, api_keys: List[str], metrics: MetricsCollector | None = None):
         self.api_keys = [k for k in api_keys if k]
         if not self.api_keys:
             raise ValueError("No Gemini API keys configured")
         self.current = 0
         self.buckets = {key: TokenBucket(10, 10) for key in self.api_keys}
         genai.configure(api_key=self.api_keys[self.current])
+        self.metrics = metrics or MetricsCollector()
 
     def rotate(self):
         self.current = (self.current + 1) % len(self.api_keys)
         genai.configure(api_key=self.api_keys[self.current])
         logger.info("Switched to API key %d", self.current)
 
-    async def generate(self, prompt: str, model: str = "gemini-pro", max_tokens: int = 1024) -> str:
+    def _count_tokens(self, text: str) -> int:
+        # Rough token estimation (4 chars per token)
+        return max(1, len(text.encode("utf-8")) // 4)
+
+    async def generate(
+        self,
+        prompt: str,
+        model: str = "gemini-pro",
+        max_tokens: int = 1024,
+    ) -> str:
         key = self.api_keys[self.current]
         bucket = self.buckets[key]
         await bucket.wait(1)
         try:
             model_obj = genai.GenerativeModel(model)
-            resp = await asyncio.to_thread(model_obj.generate_content, prompt, generation_config={"max_output_tokens": max_tokens})
+            resp = await asyncio.to_thread(
+                model_obj.generate_content,
+                prompt,
+                generation_config={"max_output_tokens": max_tokens},
+            )
+            await self.metrics.inc_requests(model)
+            await self.metrics.add_tokens(model, "in", self._count_tokens(prompt))
+            await self.metrics.add_tokens(
+                model, "out", self._count_tokens(resp.text)
+            )
             return resp.text
         except Exception as e:
             logger.error("Gemini API error: %s", e)

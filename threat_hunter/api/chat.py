@@ -13,11 +13,17 @@ class ChatQuery(BaseModel):
 
 
 @router.post("/api/chat/analyze")
-async def analyze_chat(query: ChatQuery, core: ThreatHunterCore = Depends(get_threat_hunter_core)):
+async def analyze_chat(
+    query: ChatQuery,
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
     return {"plan": "simple_search"}
 
 
 @router.post("/api/chat/execute")
-async def execute_chat(query: ChatQuery, core: ThreatHunterCore = Depends(get_threat_hunter_core)):
+async def execute_chat(
+    query: ChatQuery,
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
     answer = await core.gemini.generate(query.query, max_tokens=256)
     return {"answer": answer}

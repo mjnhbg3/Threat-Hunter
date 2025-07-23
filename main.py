@@ -55,7 +55,8 @@ async def startup_event():
 
 
 @app.get("/metrics")
-async def metrics_endpoint():
+async def metrics_endpoint() -> PlainTextResponse:
+    """Expose Prometheus-style metrics for monitoring."""
     if core:
         text = await core.metrics.render()
         return PlainTextResponse(text)

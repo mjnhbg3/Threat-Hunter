@@ -150,9 +150,6 @@ class ThreatHunterCore:
             "active_api_key_index": self.gemini.current,
         }
 
-    async def get_metrics_text(self) -> str:
-        return await self.metrics.render()
-
     # ------------------------------------------------------------------
     def ignore_issue(self, issue_id: str) -> None:
         """Remove an issue and persist the ignore list."""

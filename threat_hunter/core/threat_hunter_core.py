@@ -116,7 +116,10 @@ class ThreatHunterCore:
         if not recent_logs:
             return
         self.status = "analyzing"
-        logs_str = "\n".join([str(entry) for entry in recent_logs[:20]])
+        max_logs = self.settings.get(
+            "analysis_k", DEFAULT_SETTINGS["analysis_k"]
+        )
+        logs_str = "\n".join([str(entry) for entry in recent_logs[:max_logs]])
         prompt = (
             "Analyze the following security logs and identify any new security issues.\n"
             f"Logs:\n{logs_str}\n"
@@ -151,6 +154,11 @@ class ThreatHunterCore:
         except Exception as e:
             logger.error("Failed to parse Gemini response: %s", e)
         self.status = "ready"
+
+    async def search_logs(self, query: str) -> List[Dict[str, Any]]:
+        """Search stored logs using the vector database."""
+        k = self.settings.get("search_k", DEFAULT_SETTINGS["search_k"])
+        return await self.vector_db.search(query, k=k)
 
     def get_dashboard_data(self) -> Dict[str, Any]:
         return {

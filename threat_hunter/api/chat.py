@@ -17,7 +17,8 @@ async def analyze_chat(
     query: ChatQuery,
     core: ThreatHunterCore = Depends(get_threat_hunter_core),
 ):
-    return {"plan": "simple_search"}
+    results = await core.search_logs(query.query)
+    return {"results": results}
 
 
 @router.post("/api/chat/execute")

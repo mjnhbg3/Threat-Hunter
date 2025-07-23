@@ -39,13 +39,11 @@ async def startup_event():
     global core
     core = get_threat_hunter_core()
 
-    interval = int(os.environ.get("PROCESS_INTERVAL", 300))
-
     async def periodic():
         while True:
             logs = await core.process_logs()
             await core.analyze(logs)
-            await asyncio.sleep(interval)
+            await asyncio.sleep(core.settings.get("processing_interval", 300))
 
     asyncio.create_task(periodic())
 

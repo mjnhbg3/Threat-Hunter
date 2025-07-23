@@ -15,12 +15,16 @@ async def get_dashboard():
 
 
 @router.get("/api/dashboard")
-async def get_dashboard_data(core: ThreatHunterCore = Depends(get_threat_hunter_core)):
+async def get_dashboard_data(
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
     return core.get_dashboard_data()
 
 
 @router.post("/api/analyze")
-async def trigger_analysis(core: ThreatHunterCore = Depends(get_threat_hunter_core)):
+async def trigger_analysis(
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
     async def run():
         logs = await core.process_logs()
         await core.analyze(logs)

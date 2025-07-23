@@ -13,19 +13,29 @@ class IssueQuery(BaseModel):
 
 
 @router.post("/api/issues/{issue_id}/ignore")
-async def ignore_issue(issue_id: str, core: ThreatHunterCore = Depends(get_threat_hunter_core)):
-    core.issues = [i for i in core.issues if i["id"] != issue_id]
+async def ignore_issue(
+    issue_id: str,
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
+    core.ignore_issue(issue_id)
     return {"message": f"Issue {issue_id} ignored"}
 
 
 @router.post("/api/issues/{issue_id}/query")
-async def query_issue(issue_id: str, query: IssueQuery, core: ThreatHunterCore = Depends(get_threat_hunter_core)):
+async def query_issue(
+    issue_id: str,
+    query: IssueQuery,
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
     answer = await core.gemini.generate(query.query, max_tokens=256)
     return {"answer": answer}
 
 
 @router.post("/api/issues/{issue_id}/generate-script")
-async def generate_script(issue_id: str, core: ThreatHunterCore = Depends(get_threat_hunter_core)):
+async def generate_script(
+    issue_id: str,
+    core: ThreatHunterCore = Depends(get_threat_hunter_core),
+):
     script = await core.gemini.generate(
         f"Generate a bash script to remediate issue {issue_id}", max_tokens=200
     )

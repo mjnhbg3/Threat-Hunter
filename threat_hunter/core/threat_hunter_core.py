@@ -65,8 +65,8 @@ class ThreatHunterCore:
         self.status = "processing"
         logs = await self.wazuh.read_new_logs()
         if logs:
-            self.vector_db.add_documents(logs)
-            self.vector_db.save()
+            await self.vector_db.add_documents(logs)
+            await self.vector_db.save()
             self._save_state()
         self.status = "ready"
         self.last_run = datetime.utcnow().isoformat()

@@ -112,7 +112,7 @@ class ThreatHunterCore:
             },
             "log_trend": [],
             "rule_distribution": {},
-            "active_api_key_index": self.gemini.current,
+            "active_api_key_index": self.gemini.active_key_index,
         }
 
     async def get_metrics_text(self) -> str:

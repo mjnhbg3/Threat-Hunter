@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wazuh Threat Hunter Pro (Gemini Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Enhanced Header -->
+        <header class="glass-card p-6 mb-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Wazuh Threat Hunter Pro
+                    </h1>
+                    <p class="text-sm text-gray-400 mt-1">
+                        Gemini AI-Powered Security Analysis
+                    </p>
+                    <div class="flex flex-wrap gap-4 mt-2 text-sm">
+                        <span class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+                            Last update: <span id="last-run" class="text-blue-300">Never</span>
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-purple-400"></div>
+                            Active API Key: <span id="active-api-key" class="text-purple-300">Key 1</span>
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-green-400"></div>
+                            Status: <span id="app-status" class="status-text">Initializing...</span>
+                        </span>
+                        <span class="flex items-center gap-2" id="countdown-container" style="display: none;">
+                            <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                            Next scan in: <span id="countdown-timer" class="text-yellow-300 font-mono">--:--</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="find-more-btn" class="btn-primary btn-success">
+                        <span class="flex items-center gap-2">
+                            🔍 Find More Issues
+                        </span>
+                    </button>
+                    <button id="settings-btn" class="p-3 rounded-xl bg-gray-700/50 hover:bg-gray-600/50 transition-all duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                    </button>
+                    <div id="status-indicator" class="w-4 h-4 rounded-full status-connecting animate-pulse" title="Connecting..."></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Enhanced AI Summary -->
+        <div class="glass-card p-6 mb-8">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                    🤖
+                </div>
+                <h2 class="text-xl font-semibold">Gemini AI Security Analysis</h2>
+            </div>
+            <p id="ai-summary" class="text-gray-300 leading-relaxed">Initializing AI analysis...</p>
+        </div>
+
+        <!-- Enhanced Main Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Issues -->
+            <div class="xl:col-span-2 space-y-8">
+                <!-- Issues Section -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center justify-between mb-6 security-issues-header p-2 -m-2" id="security-issues-header">
+                        <h2 class="text-xl font-semibold flex items-center gap-2">
+                            <span class="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center text-red-400">⚠️</span>
+                            Top Security Issues
+                            <span id="issue-count" class="px-2 py-1 bg-red-500/20 text-red-300 rounded-lg text-sm font-medium">0</span>
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <div id="issues-loading" class="loading-spinner hidden text-blue-400"></div>
+                            <span class="text-xs text-gray-500">Click to view all</span>
+                        </div>
+                    </div>
+                    
+                    <div id="issues-container" class="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Top 10 AI-prioritized issues will be injected here -->
+                    </div>
+                </div>
+                
+                <!-- Chat Section -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-6 h-6 rounded bg-blue-500/20 flex items-center justify-center text-blue-400">💬</div>
+                        <h2 class="text-xl font-semibold">Chat with AI Analyst</h2>
+                    </div>
+                    <div id="chat-container" class="max-h-[350px] overflow-y-auto mb-4 flex flex-col space-y-3 p-4 bg-black/20 rounded-xl border border-gray-700/50 custom-scrollbar">
+                        <div class="chat-bubble chat-ai">
+                            👋 Hello! I'm your AI security analyst. Ask me anything about your logs, threats, or security issues.
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <input type="text" id="query-input" class="flex-1" placeholder="Ask about suspicious activities, specific IPs, timeframes...">
+                        <button id="clear-chat-btn" class="btn-primary bg-gray-600 hover:bg-gray-700 px-4">
+                            🗑️ Clear
+                        </button>
+                        <button id="query-btn" class="btn-primary px-6">
+                            <span class="query-btn-text">Send</span>
+                            <div class="loading-spinner hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Stats & Visuals -->
+            <div class="space-y-8">
+                <!-- Enhanced Statistics -->
+                <div class="glass-card p-6">
+                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded bg-green-500/20 flex items-center justify-center text-green-400">📊</span>
+                        System Overview
+                    </h2>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="stat-card">
+                            <div class="text-3xl font-bold text-blue-400" id="total-logs">0</div>
+                            <div class="text-sm text-gray-400 mt-1">Total Logs Indexed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="text-3xl font-bold text-green-400" id="new-logs">0</div>
+                            <div class="text-sm text-gray-400 mt-1">New Logs (Last Cycle)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="text-3xl font-bold text-red-400" id="anomalies">0</div>
+                            <div class="text-sm text-gray-400 mt-1">Active Security Issues</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Charts -->
+                <div class="glass-card p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <span class="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-purple-400">📈</span>
+                        Log Activity (Last Hour)
+                    </h2>
+                    <div class="chart-container">
+                        <canvas id="logTrendChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6 clickable-chart" id="rule-chart-card">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <span class="w-5 h-5 rounded bg-yellow-500/20 flex items-center justify-center text-yellow-400">🎯</span>
+                        Top Security Rules
+                        <span class="text-xs text-gray-500 ml-2">Click to expand</span>
+                    </h2>
+                    <div class="chart-container">
+                        <canvas id="ruleDistChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Enhanced Modals -->
+    <!-- Log Detail Modal -->
+    <div id="log-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Log Details</h2>
+                <button id="close-log-modal-btn" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            <pre id="log-content" class="script-output"></pre>
+        </div>
+    </div>
+
+    <!-- Issue Chat Modal -->
+    <div id="issue-query-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Chat About Issue: <span id="issue-title" class="text-blue-400"></span></h2>
+                <button id="close-issue-query-modal-btn" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            <div id="issue-chat-container" class="max-h-[400px] overflow-y-auto mb-6 flex flex-col space-y-3 p-4 bg-black/20 rounded-xl border border-gray-700/50 custom-scrollbar">
+                <!-- Issue chat messages will be appended here -->
+            </div>
+            <div class="flex gap-3">
+                <input type="text" id="issue-query-input" class="flex-1" placeholder="Ask a follow-up question...">
+                <button id="issue-query-btn" class="btn-primary">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Generation Modal -->
+    <div id="script-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Diagnosis & Repair Script: <span id="script-issue-title" class="text-green-400"></span></h2>
+                <button id="close-script-modal-btn" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            <div id="script-content" class="script-output mb-6">
+                <div class="flex items-center gap-2">
+                    <div class="loading-spinner"></div>
+                    Generating comprehensive diagnosis and repair script...
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button id="copy-script-btn" class="btn-primary btn-success">📋 Copy Script</button>
+                <button id="download-script-btn" class="btn-primary">💾 Download Script</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Configuration Settings</h2>
+                <button id="close-settings-modal-btn" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            <form id="settings-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Processing Interval (seconds)</label>
+                        <input type="number" name="processing_interval" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Initial Scan Count</label>
+                        <input type="number" name="initial_scan_count" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Log Batch Size</label>
+                        <input type="number" name="log_batch_size" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Vector Search K (Query)</label>
+                        <input type="number" name="search_k" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Vector Search K (Analysis)</label>
+                        <input type="number" name="analysis_k" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Max Issues Displayed</label>
+                        <input type="number" name="max_issues" class="w-full">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Gemini Max Output Tokens</label>
+                    <input type="number" name="max_output_tokens" class="w-full">
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="btn-primary">💾 Save Settings</button>
+                    <button type="button" id="clear-db-btn" class="btn-primary btn-danger">🗑️ Clear Database</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rule Analysis Modal -->
+    <div id="rule-analysis-modal" class="modal-backdrop">
+        <div class="modal-content" style="max-width: 95vw; width: 1400px;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Security Rules Analysis</h2>
+                <button id="close-rule-analysis-modal-btn" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            
+            <!-- Large Rule Chart -->
+            <div class="glass-card p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Rule Distribution</h3>
+                <div id="modal-rule-chart-container" class="chart-container" style="height: 400px;">
+                    <canvas id="modalRuleChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Filtering Controls -->
+            <div class="flex flex-wrap gap-3 mb-6 p-4 bg-black/20 rounded-lg border border-gray-700/50">
+                <select id="rule-severity-filter" class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                    <option value="">All Severities</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <input type="text" id="rule-search-issues" placeholder="Search issues..." 
+                       class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white flex-1 min-w-[200px]">
+                <button id="rule-clear-filters" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">
+                    Clear Filters
+                </button>
+                <div class="ml-auto">
+                    <span id="rule-filtered-count" class="text-gray-400"></span>
+                </div>
+            </div>
+            
+            <!-- Issues Container -->
+            <div id="rule-issues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <!-- Issues will be displayed here based on rule selection -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Security Issues Modal -->
+    <div id="full-issues-modal" class="modal-backdrop">
+        <div class="modal-content" style="max-width: 95vw; width: 1400px;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">All Security Issues</h2>
+                <button id="close-full-issues-modal-btn" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+            
+            <!-- Filtering Controls for Full Modal -->
+            <div class="flex flex-wrap gap-3 mb-6 p-4 bg-black/20 rounded-lg border border-gray-700/50">
+                <select id="modal-severity-filter" class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                    <option value="">All Severities</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <select id="modal-sort-issues" class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                    <option value="timestamp-desc">Newest First</option>
+                    <option value="timestamp-asc">Oldest First</option>
+                    <option value="severity-desc">Severity (High to Low)</option>
+                    <option value="severity-asc">Severity (Low to High)</option>
+                    <option value="title-asc">Title (A-Z)</option>
+                </select>
+                <input type="text" id="modal-search-issues" placeholder="Search issues..." 
+                       class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white flex-1 min-w-[200px]">
+                <button id="modal-clear-filters" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">
+                    Clear Filters
+                </button>
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="grid-view-btn" class="px-3 py-2 bg-blue-600 rounded text-white">Grid</button>
+                    <button id="list-view-btn" class="px-3 py-2 bg-gray-600 rounded text-white">List</button>
+                </div>
+            </div>
+            
+            <!-- Issues Container with Grid/List toggle -->
+            <div id="full-issues-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <!-- All issues will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

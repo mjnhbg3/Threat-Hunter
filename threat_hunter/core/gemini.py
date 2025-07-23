@@ -47,6 +47,10 @@ class Gemini:
         genai.configure(api_key=self.api_keys[self.current])
         logger.info("Switched to API key %d", self.current)
 
+    @property
+    def active_key_index(self) -> int:
+        return self.current
+
     def _count_tokens(self, text: str) -> int:
         # Rough token estimation (4 chars per token)
         return max(1, len(text.encode("utf-8")) // 4)
@@ -74,6 +78,8 @@ class Gemini:
             )
             return resp.text
         except Exception as e:
+            if "429" in str(e):
+                await self.metrics.increment_429s(model)
             logger.error("Gemini API error: %s", e)
             self.rotate()
             return ""

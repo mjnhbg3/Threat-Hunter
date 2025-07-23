@@ -210,7 +210,7 @@ class ThreatHunterCore:
             },
             "log_trend": self.log_trend,
             "rule_distribution": self.rule_distribution,
-            "active_api_key_index": self.gemini.current,
+            "active_api_key_index": self.gemini.active_key_index,
         }
 
     async def get_metrics_text(self) -> str:
@@ -222,6 +222,17 @@ class ThreatHunterCore:
         self.issues = [i for i in self.issues if i.get("id") != issue_id]
         self.ignored.add(issue_id)
         self._save_state()
+
+    async def periodic_worker(self, interval: int) -> None:
+        """Continuously process logs at a fixed interval."""
+        import time
+
+        while True:
+            start = time.monotonic()
+            await self.process_logs()
+            cycle = time.monotonic() - start
+            await self.metrics.set_cycle_time(cycle)
+            await asyncio.sleep(interval)
 
     # ------------------------------------------------------------------
     def _update_metrics(self, logs: List[Dict[str, Any]]):

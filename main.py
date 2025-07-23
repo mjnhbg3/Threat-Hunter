@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse
 
 from threat_hunter.api import dashboard, chat, issues, logs
 from threat_hunter.settings import get_threat_hunter_core
@@ -53,8 +54,9 @@ async def startup_event():
 @app.get("/metrics")
 async def metrics_endpoint():
     if core:
-        return await core.get_metrics_text()
-    return ""
+        text = await core.metrics.render()
+        return PlainTextResponse(text)
+    return PlainTextResponse("")
 
 
 if __name__ == "__main__":

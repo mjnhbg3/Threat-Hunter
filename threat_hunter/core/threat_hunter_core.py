@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 from typing import List, Dict, Any
 
 import json
@@ -27,6 +28,9 @@ class ThreatHunterCore:
         self.last_run: str | None = None
         self.issues: List[Dict[str, Any]] = []
         self.ignored: set[str] = set()
+        self.log_timestamps: list[datetime] = []
+        self.rule_counts: dict[str, int] = defaultdict(int)
+        self.new_logs: int = 0
 
         self._load_state()
 
@@ -64,10 +68,28 @@ class ThreatHunterCore:
     async def process_logs(self) -> List[Dict[str, Any]]:
         self.status = "processing"
         logs = await self.wazuh.read_new_logs()
+        self.new_logs = len(logs)
         if logs:
             self.vector_db.add_documents(logs)
             self.vector_db.save()
+            now = datetime.utcnow()
+            for entry in logs:
+                ts_str = entry.get("timestamp") or entry.get("@timestamp")
+                if ts_str:
+                    try:
+                        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                        self.log_timestamps.append(ts)
+                    except Exception:
+                        pass
+                rule = entry.get("rule") or {}
+                if isinstance(rule, dict):
+                    desc = rule.get("description") or str(rule.get("id"))
+                    if desc:
+                        self.rule_counts[desc] += 1
             self._save_state()
+            # keep only last hour of timestamps
+            cutoff = now - timedelta(hours=1)
+            self.log_timestamps = [t for t in self.log_timestamps if t >= cutoff]
         self.status = "ready"
         self.last_run = datetime.utcnow().isoformat()
         return logs
@@ -101,6 +123,18 @@ class ThreatHunterCore:
         self.status = "ready"
 
     def get_dashboard_data(self) -> Dict[str, Any]:
+        now = datetime.utcnow()
+        cutoff = now - timedelta(hours=1)
+        trend_counts: dict[str, int] = defaultdict(int)
+        for ts in self.log_timestamps:
+            if ts >= cutoff:
+                trend_counts[ts.strftime("%H:%M")] += 1
+
+        trend = [
+            {"time": t, "count": trend_counts[t]}
+            for t in sorted(trend_counts.keys())
+        ]
+
         return {
             "status": self.status,
             "last_run": self.last_run,
@@ -108,10 +142,11 @@ class ThreatHunterCore:
             "issues": self.issues,
             "stats": {
                 "total_logs": self.vector_db.index.ntotal,
+                "new_logs": self.new_logs,
                 "anomalies": len(self.issues),
             },
-            "log_trend": [],
-            "rule_distribution": {},
+            "log_trend": trend,
+            "rule_distribution": dict(self.rule_counts),
             "active_api_key_index": self.gemini.current,
         }
 

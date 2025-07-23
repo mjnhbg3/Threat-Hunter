@@ -451,8 +451,9 @@ async function updateUI(data) {
     document.getElementById('active-api-key').textContent = `Key ${(data.active_api_key_index || 0) + 1}`;
     
     // Update application status and handle countdown
-    const status = data.status || 'Unknown';
-    document.getElementById('app-status').textContent = status;
+    const rawStatus = data.status || 'Unknown';
+    const statusLower = rawStatus.toLowerCase();
+    document.getElementById('app-status').textContent = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
     
     // Update processing interval and start countdown if idle/ready
     if (data.settings && data.settings.processing_interval) {
@@ -461,7 +462,7 @@ async function updateUI(data) {
     
     if (data.last_run) {
         lastUpdateTime = new Date(data.last_run).getTime();
-        if (status === 'Ready' || status === 'Idle') {
+        if (statusLower === 'ready' || statusLower === 'idle') {
             startCountdownTimer();
         } else {
             document.getElementById('countdown-container').style.display = 'none';
